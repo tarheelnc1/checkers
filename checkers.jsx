@@ -347,6 +347,9 @@ const CheckersGame = () => {
       }
     }
     
+    console.log('Board initialized with', board.length, 'rows');
+    console.log('Board structure:', board);
+    
     return board;
   };
 
@@ -951,6 +954,8 @@ const CheckersGame = () => {
             inset 0 0 20px rgba(0, 255, 157, 0.1);
           position: relative;
           z-index: 1;
+          max-height: 95vh;
+          overflow-y: auto;
         }
         
         h1 {
@@ -1041,6 +1046,8 @@ const CheckersGame = () => {
           flex-direction: column;
           align-items: center;
           gap: 20px;
+          width: 100%;
+          min-height: 500px;
         }
         
         .checkerboard {
@@ -1050,6 +1057,7 @@ const CheckersGame = () => {
           gap: 0;
           border: 3px solid #00ff9d;
           box-shadow: 0 0 20px rgba(0, 255, 157, 0.4);
+          background: #000;
         }
         
         .square {
@@ -1397,8 +1405,16 @@ const CheckersGame = () => {
             height: 35px;
           }
           
+          .piece.king::after {
+            font-size: 20px;
+          }
+          
           h1 {
             font-size: 1.8em;
+          }
+          
+          .screen {
+            padding: 20px 15px;
           }
         }
       `}</style>
@@ -1624,7 +1640,7 @@ const CheckersGame = () => {
       )}
 
       {screen === 'playing' && (
-        <div className="screen" style={{maxWidth: '700px'}}>
+        <div className="screen" style={{maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto'}}>
           <h1>♟️ CHECKERS</h1>
           
           <div className="scoreboard">
@@ -1658,7 +1674,7 @@ const CheckersGame = () => {
             {gameState?.currentTurn === playerId ? '🎯 YOUR TURN' : '⏳ Opponent\'s Turn'}
           </div>
           
-          <div className="board-container">
+          <div className="board-container" style={{margin: '20px auto'}}>
             <div className="checkerboard">
               {gameState?.board?.map((row, rowIndex) => 
                 row.map((piece, colIndex) => {
