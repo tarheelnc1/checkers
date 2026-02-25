@@ -604,7 +604,7 @@ const CheckersGame = () => {
     const moves = [];
     const jumps = [];
     
-    if (!piece || !board || !board[row]) return { moves: [], jumps: [] };
+    if (!piece || !board) return { moves: [], jumps: [] };
     
     const directions = piece.king 
       ? [[-1, -1], [-1, 1], [1, -1], [1, 1]] 
@@ -618,7 +618,7 @@ const CheckersGame = () => {
       const newCol = col + dc;
       
       if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-        if (board[newRow] && !board[newRow][newCol]) {
+        if (!board?.[newRow]?.[newCol]) {
           moves.push({ row: newRow, col: newCol, type: 'move' });
         }
       }
@@ -632,17 +632,17 @@ const CheckersGame = () => {
       const midCol = col + dc;
       
       if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8) {
-        if (board[midRow] && board[jumpRow]) {
-          const midPiece = board[midRow][midCol];
-          if (midPiece && midPiece.color !== piece.color && !board[jumpRow][jumpCol]) {
-            jumps.push({ 
-              row: jumpRow, 
-              col: jumpCol, 
-              type: 'jump',
-              captureRow: midRow,
-              captureCol: midCol
-            });
-          }
+        const midPiece = board?.[midRow]?.[midCol];
+        const destSquare = board?.[jumpRow]?.[jumpCol];
+        
+        if (midPiece && midPiece.color !== piece.color && !destSquare) {
+          jumps.push({ 
+            row: jumpRow, 
+            col: jumpCol, 
+            type: 'jump',
+            captureRow: midRow,
+            captureCol: midCol
+          });
         }
       }
     }
@@ -653,19 +653,21 @@ const CheckersGame = () => {
   const selectPiece = (row, col) => {
     if (gameState?.phase !== 'playing') return;
     if (gameState?.currentTurn !== playerId) return;
-    if (!gameState?.board || !gameState.board[row]) return;
+    if (!gameState?.board?.[row]?.[col]) {
+      // Clicked empty square
+      return;
+    }
     
     const piece = gameState.board[row][col];
-    const myColor = gameState.players[playerId].color;
+    const myColor = gameState?.players?.[playerId]?.color;
     
-    if (!piece || piece.color !== myColor) return;
+    if (!piece || !myColor || piece.color !== myColor) return;
     
     // Check if any jumps are available on the board (forced capture rule)
     let hasJumps = false;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
-        if (!gameState.board[r]) continue;
-        const p = gameState.board[r][c];
+        const p = gameState.board?.[r]?.[c];
         if (p && p.color === myColor) {
           const { jumps } = getValidMoves(gameState.board, r, c, p);
           if (jumps.length > 0) {
@@ -693,11 +695,13 @@ const CheckersGame = () => {
     const move = validMoves.find(m => m.row === toRow && m.col === toCol);
     if (!move) return;
     
-    const newBoard = gameState.board.map(row => [...row]);
+    // Create deep copy of board
+    const newBoard = [];
+    for (let i = 0; i < 8; i++) {
+      newBoard[i] = gameState.board?.[i] ? [...gameState.board[i]] : Array(8).fill(null);
+    }
     
-    if (!newBoard[selectedPiece.row]) return;
-    
-    const piece = newBoard[selectedPiece.row][selectedPiece.col];
+    const piece = newBoard?.[selectedPiece.row]?.[selectedPiece.col];
     
     if (!piece) return;
     
@@ -716,7 +720,7 @@ const CheckersGame = () => {
     
     // Check for king promotion
     const wasKing = piece.king;
-    if (!wasKing) {
+    if (!wasKing && newBoard?.[toRow]?.[toCol]) {
       if ((piece.color === 'red' && toRow === 0) || (piece.color === 'black' && toRow === 7)) {
         newBoard[toRow][toCol].king = true;
         kingsCreated++;
@@ -724,7 +728,8 @@ const CheckersGame = () => {
     }
     
     // Check for multi-jump
-    const { jumps } = getValidMoves(newBoard, toRow, toCol, newBoard[toRow][toCol]);
+    const movedPiece = newBoard?.[toRow]?.[toCol];
+    const { jumps } = movedPiece ? getValidMoves(newBoard, toRow, toCol, movedPiece) : { jumps: [] };
     const canContinueJumping = move.type === 'jump' && jumps.length > 0;
     
     if (canContinueJumping) {
@@ -749,8 +754,7 @@ const CheckersGame = () => {
     
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
-        if (!newBoard[r]) continue;
-        const p = newBoard[r][c];
+        const p = newBoard?.[r]?.[c];
         if (p && p.color === opponentColor) {
           opponentHasPieces = true;
           const { moves, jumps } = getValidMoves(newBoard, r, c, p);
@@ -770,8 +774,7 @@ const CheckersGame = () => {
       let piecesRemaining = 0;
       for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
-          if (!newBoard[r]) continue;
-          const p = newBoard[r][c];
+          const p = newBoard?.[r]?.[c];
           if (p && p.color === gameState.players[playerId].color) {
             piecesRemaining++;
           }
