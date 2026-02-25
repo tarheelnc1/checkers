@@ -326,15 +326,30 @@ const CheckersGame = () => {
   }, [gameState?.phase, gameState?.players, playerName, playerId, db]);
 
   // Sanitize board to ensure no undefined values (Firebase doesn't accept undefined)
+  // ALWAYS returns exactly 8x8 board
   const sanitizeBoard = (board) => {
+    if (!board || board.length !== 8) {
+      console.warn('sanitizeBoard: Input board has', board?.length || 0, 'rows - rebuilding to 8x8');
+    }
+    
     const clean = [];
     for (let i = 0; i < 8; i++) {
       clean[i] = [];
       for (let j = 0; j < 8; j++) {
         const square = board?.[i]?.[j];
-        clean[i][j] = square === undefined ? null : square;
+        // Convert undefined to null, keep pieces and null as-is
+        if (square === undefined) {
+          clean[i][j] = null;
+        } else if (square === null) {
+          clean[i][j] = null;
+        } else {
+          // It's a piece object
+          clean[i][j] = square;
+        }
       }
     }
+    
+    console.log('sanitizeBoard: Output has', clean.length, 'rows');
     return clean;
   };
 
@@ -708,14 +723,22 @@ const CheckersGame = () => {
     const move = validMoves.find(m => m.row === toRow && m.col === toCol);
     if (!move) return;
     
-    // Create deep copy of board - ensure all empty squares are null, not undefined
+    // Create deep copy of board - ensure ALL 8 rows and 8 columns exist
     const newBoard = [];
     for (let i = 0; i < 8; i++) {
       newBoard[i] = [];
       for (let j = 0; j < 8; j++) {
         const square = gameState.board?.[i]?.[j];
-        newBoard[i][j] = square === undefined ? null : square;
+        // Explicitly set to null if undefined or missing
+        newBoard[i][j] = (square === undefined || square === null) ? null : square;
       }
+    }
+    
+    // Verify we have exactly 8 rows
+    if (newBoard.length !== 8) {
+      console.error('Board copy failed! Has', newBoard.length, 'rows');
+      alert('Board error - please refresh and try again');
+      return;
     }
     
     const piece = newBoard?.[selectedPiece.row]?.[selectedPiece.col];
@@ -921,7 +944,17 @@ const CheckersGame = () => {
       const unsubscribe = (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          setGameState(data);
+          // Validate and repair board if needed
+          if (data.board && data.board.length !== 8) {
+            console.warn('Board corrupted! Has', data.board.length, 'rows. Repairing...');
+            const repairedBoard = sanitizeBoard(data.board);
+            // Fix it in Firebase
+            db.ref(`checkers_games/${gameId}/board`).set(repairedBoard);
+            // Update local state with repaired board
+            setGameState({...data, board: repairedBoard});
+          } else {
+            setGameState(data);
+          }
           
           if (data.phase === 'lobby') {
             setScreen('lobby');
@@ -1799,8 +1832,30 @@ const CheckersGame = () => {
                   })
                 )
               ) : (
-                <div style={{color: 'red', padding: '20px'}}>
-                  Error: Board not initialized properly. Has {gameState?.board?.length || 0} rows instead of 8.
+                <div style={{color: 'red', padding: '20px', textAlign: 'center'}}>
+                  <div style={{marginBottom: '15px'}}>
+                    ⚠️ Board Error: Has {gameState?.board?.length || 0} rows instead of 8
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      console.log('Repairing board...');
+                      const repairedBoard = sanitizeBoard(gameState?.board || []);
+                      await db.ref(`checkers_games/${gameId}/board`).set(repairedBoard);
+                      alert('Board repaired! Refresh if needed.');
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      background: '#00ff9d',
+                      color: '#0a0e27',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontFamily: 'Orbitron',
+                      fontWeight: '700'
+                    }}
+                  >
+                    🔧 Repair Board
+                  </button>
                 </div>
               )}
             </div>
