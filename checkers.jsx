@@ -1694,30 +1694,38 @@ const CheckersGame = () => {
           
           <div className="board-container" style={{margin: '20px auto'}}>
             <div className="checkerboard">
-              {gameState?.board?.map((row, rowIndex) => 
-                row.map((piece, colIndex) => {
-                  const isLight = (rowIndex + colIndex) % 2 === 0;
-                  const isSelected = selectedPiece?.row === rowIndex && selectedPiece?.col === colIndex;
-                  const isValidMove = validMoves.some(m => m.row === rowIndex && m.col === colIndex);
-                  
-                  return (
-                    <div 
-                      key={`${rowIndex}-${colIndex}`}
-                      className={`square ${isLight ? 'light' : 'dark'} ${isSelected ? 'selected' : ''} ${isValidMove ? 'valid-move' : ''}`}
-                      onClick={() => {
-                        if (isValidMove) {
-                          movePiece(rowIndex, colIndex);
-                        } else {
-                          selectPiece(rowIndex, colIndex);
-                        }
-                      }}
-                    >
-                      {piece && (
-                        <div className={`piece ${piece.color} ${piece.king ? 'king' : ''}`} />
-                      )}
-                    </div>
-                  );
-                })
+              {gameState?.board && gameState.board.length === 8 ? (
+                // Render all 8 rows
+                [0, 1, 2, 3, 4, 5, 6, 7].map(rowIndex => 
+                  [0, 1, 2, 3, 4, 5, 6, 7].map(colIndex => {
+                    const piece = gameState.board[rowIndex]?.[colIndex];
+                    const isLight = (rowIndex + colIndex) % 2 === 0;
+                    const isSelected = selectedPiece?.row === rowIndex && selectedPiece?.col === colIndex;
+                    const isValidMove = validMoves.some(m => m.row === rowIndex && m.col === colIndex);
+                    
+                    return (
+                      <div 
+                        key={`${rowIndex}-${colIndex}`}
+                        className={`square ${isLight ? 'light' : 'dark'} ${isSelected ? 'selected' : ''} ${isValidMove ? 'valid-move' : ''}`}
+                        onClick={() => {
+                          if (isValidMove) {
+                            movePiece(rowIndex, colIndex);
+                          } else {
+                            selectPiece(rowIndex, colIndex);
+                          }
+                        }}
+                      >
+                        {piece && (
+                          <div className={`piece ${piece.color} ${piece.king ? 'king' : ''}`} />
+                        )}
+                      </div>
+                    );
+                  })
+                )
+              ) : (
+                <div style={{color: 'red', padding: '20px'}}>
+                  Error: Board not initialized properly. Has {gameState?.board?.length || 0} rows instead of 8.
+                </div>
               )}
             </div>
           </div>
