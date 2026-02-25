@@ -955,6 +955,8 @@ const CheckersGame = () => {
           background: #0a0e27;
           color: #00ff9d;
           overflow-x: hidden;
+          touch-action: manipulation;
+          -webkit-touch-callout: none;
         }
         
         .app {
@@ -1108,6 +1110,8 @@ const CheckersGame = () => {
           border: 3px solid #00ff9d;
           box-shadow: 0 0 20px rgba(0, 255, 157, 0.4);
           background: #000;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
         }
         
         .square {
@@ -1119,6 +1123,13 @@ const CheckersGame = () => {
           cursor: pointer;
           position: relative;
           transition: all 0.2s;
+          -webkit-tap-highlight-color: transparent;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        
+        .square:active {
+          transform: scale(0.95);
         }
         
         .square.light {
@@ -1161,6 +1172,7 @@ const CheckersGame = () => {
           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
           position: relative;
           transition: transform 0.2s;
+          pointer-events: none;
         }
         
         .piece:hover {
@@ -1441,22 +1453,22 @@ const CheckersGame = () => {
         
         @media (max-width: 600px) {
           .checkerboard {
-            grid-template-columns: repeat(8, 45px);
-            grid-template-rows: repeat(8, 45px);
+            grid-template-columns: repeat(8, 44px);
+            grid-template-rows: repeat(8, 44px);
           }
           
           .square {
-            width: 45px;
-            height: 45px;
+            width: 44px;
+            height: 44px;
           }
           
           .piece {
-            width: 35px;
-            height: 35px;
+            width: 34px;
+            height: 34px;
           }
           
           .piece.king::after {
-            font-size: 20px;
+            font-size: 18px;
           }
           
           h1 {
@@ -1465,6 +1477,33 @@ const CheckersGame = () => {
           
           .screen {
             padding: 20px 15px;
+          }
+          
+          .board-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+        }
+        
+        @media (max-width: 400px) {
+          .checkerboard {
+            grid-template-columns: repeat(8, 40px);
+            grid-template-rows: repeat(8, 40px);
+          }
+          
+          .square {
+            width: 40px;
+            height: 40px;
+          }
+          
+          .piece {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #000;
+          }
+          
+          .piece.king::after {
+            font-size: 16px;
           }
         }
       `}</style>
@@ -1735,17 +1774,22 @@ const CheckersGame = () => {
                     const isSelected = selectedPiece?.row === rowIndex && selectedPiece?.col === colIndex;
                     const isValidMove = validMoves.some(m => m.row === rowIndex && m.col === colIndex);
                     
+                    const handleClick = (e) => {
+                      e.preventDefault();
+                      if (isValidMove) {
+                        movePiece(rowIndex, colIndex);
+                      } else {
+                        selectPiece(rowIndex, colIndex);
+                      }
+                    };
+                    
                     return (
                       <div 
                         key={`${rowIndex}-${colIndex}`}
                         className={`square ${isLight ? 'light' : 'dark'} ${isSelected ? 'selected' : ''} ${isValidMove ? 'valid-move' : ''}`}
-                        onClick={() => {
-                          if (isValidMove) {
-                            movePiece(rowIndex, colIndex);
-                          } else {
-                            selectPiece(rowIndex, colIndex);
-                          }
-                        }}
+                        onClick={handleClick}
+                        onTouchEnd={handleClick}
+                        style={{touchAction: 'manipulation', cursor: 'pointer'}}
                       >
                         {piece && (
                           <div className={`piece ${piece.color} ${piece.king ? 'king' : ''}`} />
