@@ -327,28 +327,30 @@ const CheckersGame = () => {
 
   // Initialize board with standard checkers setup
   const initializeBoard = () => {
-    const board = Array(8).fill(null).map(() => Array(8).fill(null));
+    const board = [];
     
-    // Place black pieces (rows 0-2)
-    for (let row = 0; row < 3; row++) {
+    // Create 8 rows
+    for (let row = 0; row < 8; row++) {
+      board[row] = [];
+      
+      // Create 8 columns
       for (let col = 0; col < 8; col++) {
-        if ((row + col) % 2 === 1) {
+        // Place black pieces in top 3 rows on dark squares
+        if (row < 3 && (row + col) % 2 === 1) {
           board[row][col] = { color: 'black', king: false };
         }
-      }
-    }
-    
-    // Place red pieces (rows 5-7)
-    for (let row = 5; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        if ((row + col) % 2 === 1) {
+        // Place red pieces in bottom 3 rows on dark squares
+        else if (row > 4 && (row + col) % 2 === 1) {
           board[row][col] = { color: 'red', king: false };
+        }
+        // Empty squares
+        else {
+          board[row][col] = null;
         }
       }
     }
     
-    console.log('Board initialized with', board.length, 'rows');
-    console.log('Board structure:', board);
+    console.log('Board initialized:', board.length, 'rows x', board[0].length, 'cols');
     
     return board;
   };
@@ -359,85 +361,101 @@ const CheckersGame = () => {
       return;
     }
     
-    const nameCheck = await checkNameAvailable(playerName);
-    
-    if (!nameCheck.available) {
-      alert(`The name "${playerName}" is already taken. Please choose a different name.`);
-      return;
-    }
-    
-    if (nameCheck.canReclaim) {
-      const lastPlayedDate = new Date(nameCheck.lastPlayed);
-      const daysInactive = Math.floor((Date.now() - nameCheck.lastPlayed) / (1000 * 60 * 60 * 24));
+    try {
+      console.log('Creating game...');
       
-      const confirmed = confirm(
-        `The name "${playerName}" was last used ${daysInactive} days ago (${lastPlayedDate.toLocaleDateString()}).\n\n` +
-        `Stats: ${nameCheck.existingStats.wins}W - ${nameCheck.existingStats.losses}L\n` +
-        `Points: ${nameCheck.existingStats.points || 0}\n\n` +
-        `Do you want to reclaim this name and keep these stats?`
-      );
+      const nameCheck = await checkNameAvailable(playerName);
       
-      if (!confirmed) return;
+      if (!nameCheck.available) {
+        alert(`The name "${playerName}" is already taken. Please choose a different name.`);
+        return;
+      }
       
-      const playerKey = sanitizePlayerName(playerName);
-      await db.ref(`checkers_playerStats/${playerKey}`).update({
-        token: playerToken,
-        reclaimedAt: Date.now(),
-        lastPlayed: Date.now()
-      });
-      
-      setPlayerStats({
-        wins: nameCheck.existingStats.wins || 0,
-        losses: nameCheck.existingStats.losses || 0,
-        points: nameCheck.existingStats.points || 0
-      });
-    } else if (!nameCheck.isOwner) {
-      const playerKey = sanitizePlayerName(playerName);
-      await db.ref(`checkers_playerStats/${playerKey}`).set({
-        name: playerName.trim(),
-        wins: 0,
-        losses: 0,
-        points: 0,
-        token: playerToken,
-        createdAt: Date.now(),
-        lastPlayed: Date.now()
-      });
-    }
-    
-    localStorage.setItem('checkersPlayerName', playerName.trim());
-    
-    const newGameRef = db.ref('checkers_games').push();
-    const newGameId = newGameRef.key;
-    const gameCode = Math.random().toString(36).substr(2, 6).toUpperCase();
-    
-    localStorage.setItem('checkersLastCode', gameCode);
-    
-    const currentUrl = window.location.origin + window.location.pathname;
-    const link = `${currentUrl}?join=${gameCode}`;
-    setShareableLink(link);
-    
-    await newGameRef.set({
-      code: gameCode,
-      host: playerId,
-      phase: 'lobby',
-      currentTurn: null,
-      board: initializeBoard(),
-      players: {
-        [playerId]: {
-          name: playerName,
-          color: 'red',
-          ready: false,
+      if (nameCheck.canReclaim) {
+        const lastPlayedDate = new Date(nameCheck.lastPlayed);
+        const daysInactive = Math.floor((Date.now() - nameCheck.lastPlayed) / (1000 * 60 * 60 * 24));
+        
+        const confirmed = confirm(
+          `The name "${playerName}" was last used ${daysInactive} days ago (${lastPlayedDate.toLocaleDateString()}).\n\n` +
+          `Stats: ${nameCheck.existingStats.wins}W - ${nameCheck.existingStats.losses}L\n` +
+          `Points: ${nameCheck.existingStats.points || 0}\n\n` +
+          `Do you want to reclaim this name and keep these stats?`
+        );
+        
+        if (!confirmed) return;
+        
+        const playerKey = sanitizePlayerName(playerName);
+        await db.ref(`checkers_playerStats/${playerKey}`).update({
+          token: playerToken,
+          reclaimedAt: Date.now(),
+          lastPlayed: Date.now()
+        });
+        
+        setPlayerStats({
+          wins: nameCheck.existingStats.wins || 0,
+          losses: nameCheck.existingStats.losses || 0,
+          points: nameCheck.existingStats.points || 0
+        });
+      } else if (!nameCheck.isOwner) {
+        console.log('Registering new player...');
+        const playerKey = sanitizePlayerName(playerName);
+        await db.ref(`checkers_playerStats/${playerKey}`).set({
+          name: playerName.trim(),
           wins: 0,
+          losses: 0,
           points: 0,
-          captures: 0,
-          kingsCreated: 0
-        }
-      },
-      createdAt: Date.now()
-    });
-    
-    setGameId(newGameId);
-    setScreen('lobby');
+          token: playerToken,
+          createdAt: Date.now(),
+          lastPlayed: Date.now()
+        });
+        console.log('Player registered successfully');
+      }
+      
+      localStorage.setItem('checkersPlayerName', playerName.trim());
+      
+      console.log('Creating game reference...');
+      const newGameRef = db.ref('checkers_games').push();
+      const newGameId = newGameRef.key;
+      const gameCode = Math.random().toString(36).substr(2, 6).toUpperCase();
+      
+      localStorage.setItem('checkersLastCode', gameCode);
+      
+      const currentUrl = window.location.origin + window.location.pathname;
+      const link = `${currentUrl}?join=${gameCode}`;
+      setShareableLink(link);
+      
+      console.log('Initializing board...');
+      const board = initializeBoard();
+      
+      console.log('Writing game to Firebase...');
+      await newGameRef.set({
+        code: gameCode,
+        host: playerId,
+        phase: 'lobby',
+        currentTurn: null,
+        board: board,
+        players: {
+          [playerId]: {
+            name: playerName,
+            color: 'red',
+            ready: false,
+            wins: 0,
+            points: 0,
+            captures: 0,
+            kingsCreated: 0
+          }
+        },
+        createdAt: Date.now()
+      });
+      
+      console.log('✅ Game created successfully! Game ID:', newGameId);
+      
+      setGameId(newGameId);
+      setScreen('lobby');
+    } catch (error) {
+      console.error('❌ Error creating game:', error);
+      alert('Error creating game: ' + error.message);
+    }
   };
 
   const joinGame = async () => {
