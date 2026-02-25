@@ -604,7 +604,7 @@ const CheckersGame = () => {
     const moves = [];
     const jumps = [];
     
-    if (!piece) return { moves: [], jumps: [] };
+    if (!piece || !board || !board[row]) return { moves: [], jumps: [] };
     
     const directions = piece.king 
       ? [[-1, -1], [-1, 1], [1, -1], [1, 1]] 
@@ -618,7 +618,7 @@ const CheckersGame = () => {
       const newCol = col + dc;
       
       if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-        if (!board[newRow][newCol]) {
+        if (board[newRow] && !board[newRow][newCol]) {
           moves.push({ row: newRow, col: newCol, type: 'move' });
         }
       }
@@ -632,15 +632,17 @@ const CheckersGame = () => {
       const midCol = col + dc;
       
       if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8) {
-        const midPiece = board[midRow][midCol];
-        if (midPiece && midPiece.color !== piece.color && !board[jumpRow][jumpCol]) {
-          jumps.push({ 
-            row: jumpRow, 
-            col: jumpCol, 
-            type: 'jump',
-            captureRow: midRow,
-            captureCol: midCol
-          });
+        if (board[midRow] && board[jumpRow]) {
+          const midPiece = board[midRow][midCol];
+          if (midPiece && midPiece.color !== piece.color && !board[jumpRow][jumpCol]) {
+            jumps.push({ 
+              row: jumpRow, 
+              col: jumpCol, 
+              type: 'jump',
+              captureRow: midRow,
+              captureCol: midCol
+            });
+          }
         }
       }
     }
@@ -651,6 +653,7 @@ const CheckersGame = () => {
   const selectPiece = (row, col) => {
     if (gameState?.phase !== 'playing') return;
     if (gameState?.currentTurn !== playerId) return;
+    if (!gameState?.board || !gameState.board[row]) return;
     
     const piece = gameState.board[row][col];
     const myColor = gameState.players[playerId].color;
@@ -661,6 +664,7 @@ const CheckersGame = () => {
     let hasJumps = false;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
+        if (!gameState.board[r]) continue;
         const p = gameState.board[r][c];
         if (p && p.color === myColor) {
           const { jumps } = getValidMoves(gameState.board, r, c, p);
@@ -684,12 +688,18 @@ const CheckersGame = () => {
 
   const movePiece = async (toRow, toCol) => {
     if (!selectedPiece) return;
+    if (!gameState?.board) return;
     
     const move = validMoves.find(m => m.row === toRow && m.col === toCol);
     if (!move) return;
     
     const newBoard = gameState.board.map(row => [...row]);
+    
+    if (!newBoard[selectedPiece.row]) return;
+    
     const piece = newBoard[selectedPiece.row][selectedPiece.col];
+    
+    if (!piece) return;
     
     // Move the piece
     newBoard[toRow][toCol] = piece;
@@ -739,6 +749,7 @@ const CheckersGame = () => {
     
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
+        if (!newBoard[r]) continue;
         const p = newBoard[r][c];
         if (p && p.color === opponentColor) {
           opponentHasPieces = true;
@@ -759,6 +770,7 @@ const CheckersGame = () => {
       let piecesRemaining = 0;
       for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
+          if (!newBoard[r]) continue;
           const p = newBoard[r][c];
           if (p && p.color === gameState.players[playerId].color) {
             piecesRemaining++;
