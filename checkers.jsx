@@ -325,6 +325,19 @@ const CheckersGame = () => {
     }
   }, [gameState?.phase, gameState?.players, playerName, playerId, db]);
 
+  // Sanitize board to ensure no undefined values (Firebase doesn't accept undefined)
+  const sanitizeBoard = (board) => {
+    const clean = [];
+    for (let i = 0; i < 8; i++) {
+      clean[i] = [];
+      for (let j = 0; j < 8; j++) {
+        const square = board?.[i]?.[j];
+        clean[i][j] = square === undefined ? null : square;
+      }
+    }
+    return clean;
+  };
+
   // Initialize board with standard checkers setup
   const initializeBoard = () => {
     const board = [];
@@ -695,10 +708,14 @@ const CheckersGame = () => {
     const move = validMoves.find(m => m.row === toRow && m.col === toCol);
     if (!move) return;
     
-    // Create deep copy of board
+    // Create deep copy of board - ensure all empty squares are null, not undefined
     const newBoard = [];
     for (let i = 0; i < 8; i++) {
-      newBoard[i] = gameState.board?.[i] ? [...gameState.board[i]] : Array(8).fill(null);
+      newBoard[i] = [];
+      for (let j = 0; j < 8; j++) {
+        const square = gameState.board?.[i]?.[j];
+        newBoard[i][j] = square === undefined ? null : square;
+      }
     }
     
     const piece = newBoard?.[selectedPiece.row]?.[selectedPiece.col];
@@ -735,7 +752,7 @@ const CheckersGame = () => {
     if (canContinueJumping) {
       // Update board but keep turn
       await db.ref(`checkers_games/${gameId}`).update({
-        board: newBoard,
+        board: sanitizeBoard(newBoard),
         [`players/${playerId}/captures`]: capturesMade,
         [`players/${playerId}/kingsCreated`]: kingsCreated
       });
@@ -831,13 +848,13 @@ const CheckersGame = () => {
       await db.ref(`checkers_games/${gameId}`).update({
         phase: 'finished',
         winner: playerId,
-        board: newBoard,
+        board: sanitizeBoard(newBoard),
         pointsEarned: pointsEarned
       });
     } else {
       // Switch turns
       await db.ref(`checkers_games/${gameId}`).update({
-        board: newBoard,
+        board: sanitizeBoard(newBoard),
         currentTurn: opponentId,
         [`players/${playerId}/captures`]: capturesMade,
         [`players/${playerId}/kingsCreated`]: kingsCreated
