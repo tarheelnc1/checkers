@@ -1133,23 +1133,31 @@ const CheckersGame = () => {
           gap: 20px;
           width: 100%;
           min-height: 500px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
         }
         
         .checkerboard {
           display: grid;
-          grid-template-columns: repeat(8, 60px);
-          grid-template-rows: repeat(8, 60px);
+          grid-template-columns: repeat(8, minmax(60px, 60px));
+          grid-template-rows: repeat(8, minmax(60px, 60px));
           gap: 0;
           border: 3px solid #00ff9d;
           box-shadow: 0 0 20px rgba(0, 255, 157, 0.4);
           background: #000;
           touch-action: manipulation;
           -webkit-tap-highlight-color: transparent;
+          width: fit-content;
+          margin: 0 auto;
         }
         
         .square {
           width: 60px;
           height: 60px;
+          min-width: 60px;
+          min-height: 60px;
+          max-width: 60px;
+          max-height: 60px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1159,6 +1167,7 @@ const CheckersGame = () => {
           -webkit-tap-highlight-color: transparent;
           user-select: none;
           -webkit-user-select: none;
+          flex-shrink: 0;
         }
         
         .square:active {
@@ -1486,13 +1495,15 @@ const CheckersGame = () => {
         
         @media (max-width: 600px) {
           .checkerboard {
-            grid-template-columns: repeat(8, 44px);
-            grid-template-rows: repeat(8, 44px);
+            grid-template-columns: repeat(8, minmax(44px, 44px));
+            grid-template-rows: repeat(8, minmax(44px, 44px));
           }
           
           .square {
             width: 44px;
             height: 44px;
+            min-width: 44px;
+            min-height: 44px;
           }
           
           .piece {
@@ -1510,23 +1521,29 @@ const CheckersGame = () => {
           
           .screen {
             padding: 20px 15px;
+            max-width: 100%;
           }
           
           .board-container {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            width: 100%;
+            display: flex;
+            justify-content: center;
           }
         }
         
         @media (max-width: 400px) {
           .checkerboard {
-            grid-template-columns: repeat(8, 40px);
-            grid-template-rows: repeat(8, 40px);
+            grid-template-columns: repeat(8, minmax(40px, 40px));
+            grid-template-rows: repeat(8, minmax(40px, 40px));
           }
           
           .square {
             width: 40px;
             height: 40px;
+            min-width: 40px;
+            min-height: 40px;
           }
           
           .piece {
@@ -1800,37 +1817,44 @@ const CheckersGame = () => {
             <div className="checkerboard">
               {gameState?.board && gameState.board.length === 8 ? (
                 // Render all 8 rows
-                [0, 1, 2, 3, 4, 5, 6, 7].map(rowIndex => 
-                  [0, 1, 2, 3, 4, 5, 6, 7].map(colIndex => {
-                    const piece = gameState.board[rowIndex]?.[colIndex];
-                    const isLight = (rowIndex + colIndex) % 2 === 0;
-                    const isSelected = selectedPiece?.row === rowIndex && selectedPiece?.col === colIndex;
-                    const isValidMove = validMoves.some(m => m.row === rowIndex && m.col === colIndex);
-                    
-                    const handleClick = (e) => {
-                      e.preventDefault();
-                      if (isValidMove) {
-                        movePiece(rowIndex, colIndex);
-                      } else {
-                        selectPiece(rowIndex, colIndex);
-                      }
-                    };
-                    
-                    return (
-                      <div 
-                        key={`${rowIndex}-${colIndex}`}
-                        className={`square ${isLight ? 'light' : 'dark'} ${isSelected ? 'selected' : ''} ${isValidMove ? 'valid-move' : ''}`}
-                        onClick={handleClick}
-                        onTouchEnd={handleClick}
-                        style={{touchAction: 'manipulation', cursor: 'pointer'}}
-                      >
-                        {piece && (
-                          <div className={`piece ${piece.color} ${piece.king ? 'king' : ''}`} />
-                        )}
-                      </div>
-                    );
-                  })
-                )
+                (() => {
+                  const squares = [];
+                  for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
+                    for (let colIndex = 0; colIndex < 8; colIndex++) {
+                      const piece = gameState.board[rowIndex]?.[colIndex];
+                      const isLight = (rowIndex + colIndex) % 2 === 0;
+                      const isSelected = selectedPiece?.row === rowIndex && selectedPiece?.col === colIndex;
+                      const isValidMove = validMoves.some(m => m.row === rowIndex && m.col === colIndex);
+                      
+                      const handleClick = (e) => {
+                        e.preventDefault();
+                        if (isValidMove) {
+                          movePiece(rowIndex, colIndex);
+                        } else {
+                          selectPiece(rowIndex, colIndex);
+                        }
+                      };
+                      
+                      squares.push(
+                        <div 
+                          key={`${rowIndex}-${colIndex}`}
+                          className={`square ${isLight ? 'light' : 'dark'} ${isSelected ? 'selected' : ''} ${isValidMove ? 'valid-move' : ''}`}
+                          onClick={handleClick}
+                          onTouchEnd={handleClick}
+                          style={{touchAction: 'manipulation', cursor: 'pointer'}}
+                          data-row={rowIndex}
+                          data-col={colIndex}
+                        >
+                          {piece && (
+                            <div className={`piece ${piece.color} ${piece.king ? 'king' : ''}`} />
+                          )}
+                        </div>
+                      );
+                    }
+                  }
+                  console.log('Rendering', squares.length, 'squares (should be 64)');
+                  return squares;
+                })()
               ) : (
                 <div style={{color: 'red', padding: '20px', textAlign: 'center'}}>
                   <div style={{marginBottom: '15px'}}>
